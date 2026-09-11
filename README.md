@@ -1,40 +1,165 @@
-# Iruka SAGE 4.1 — Aadhaar Card Photo Name Screening
+# Iruka SAGE
 
-This build contains the current SAGE beta architecture plus a simplified government-name screening flow.
+### Smart Skill-Match & Career Intelligence Platform
 
-## Government identity flow
+Iruka SAGE is an AI-powered internship and career platform designed to bridge the gap between students and industry.
 
-- Upload a clear PNG/JPG/WEBP photo of the Aadhaar card.
-- A bundled prototype DL model proposes card corners.
-- OpenCV provides a fallback when the DL proposal is not usable.
-- The image is enhanced locally.
-- Tesseract OCR runs locally to read the printed government name.
-- The extracted name can then be selected into the profile name structure.
+Instead of simply listing internships, SAGE helps students understand:
+• Which internships fit their current profile
+• Why they match
+• Which skills they are missing
+• What they should learn next
+• How to improve their CV and projects
+• How to prepare for interviews
 
-This is a **document/name consistency screen**. It is not Aadhaar authentication and does not claim UIDAI cryptographic verification.
+At the same time, companies get a structured way to discover students, review applications and verify their organizational identity.
 
-There is **no Secure QR step, no DigiLocker step, no Offline e-KYC ZIP/XML step, and no UIDAI signature check** in the active government identity flow.
+---
 
-The Aadhaar image is processed locally and is not sent to AIRouter.
+## 🚀 What SAGE Does
 
-## Start
+### For Students
+• Build a profile with education, skills, interests and projects
+• Discover relevant internships
+• Get deterministic skill-based match scores
+• See skill gaps for each opportunity
+• Get personalized guidance from SAGE
+• Receive project and learning recommendations
+• Apply for internships with a CV snapshot
+• Track applications
 
-1. Install Node.js 18+.
-2. Run `SETUP-IDENTITY.bat` once on Windows. This installs OpenCV, NumPy, Pillow, Tesseract bindings and the prototype PyTorch runtime.
-3. Make a `.env` file from `.env.example` and add your AIRouter key.
-4. Run `START.bat`.
-5. Open `http://localhost:5173` if it does not open automatically.
+### For Companies
+• Access a dedicated recruiter portal
+• Create internship opportunities
+• Review student applications and CVs
+• Identify preferred candidates
+• Complete two-layer company verification
+• Posting remains locked until verification requirements are satisfied
 
-## SAGE AI
+---
 
-SAGE uses AIRouter's OpenAI-compatible endpoint with Gemini 3.7 Flash. The API key stays server-side in `.env`.
+## 🧠 SAGE AI
 
-```env
-AIROUTER_API_KEY=your_airouter_key_here
-AIROUTER_BASE_URL=https://api.airouter.in/v1
-AIROUTER_MODEL=google/gemini-3.7-flash
-```
+SAGE is the career-intelligence layer of Iruka.
 
-## Important distinction
+The application uses Gemini 3.7 Flash through AIRouter's OpenAI-compatible API.
 
-Certificate uploads have their own credential-screening pipeline. That is separate from the Aadhaar card photo name screen. The Aadhaar flow does not inspect or validate QR codes.
+SAGE can:
+• Analyze student context
+• Explain internship matches
+• Identify skill gaps
+• Create learning roadmaps
+• Suggest portfolio projects
+• Help improve CVs
+• Prepare students for interviews
+• Answer general questions without forcing every conversation into career advice
+
+The foundation model is pre-trained. Iruka SAGE customizes its behavior through structured prompts, profile context, internship data and application logic rather than training a foundation model from scratch.
+
+---
+
+## 🎯 Matching Engine
+
+Internship matching is handled separately from the AI.
+
+The backend calculates skill overlap between a student's profile and internship requirements. SAGE then uses that structured result to explain the match and recommend next steps.
+
+This separation makes objective matching more predictable while allowing AI to provide personalized guidance.
+
+---
+
+## 🛡️ Verification
+
+Iruka SAGE uses verification as an evidence layer rather than allowing users to simply claim that a skill is verified.
+
+### Student credentials
+Credential documents can be screened for:
+• Recipient-name consistency
+• Credential/document structure
+• Course or credential title
+• Issuer information
+• Date and credential ID when available
+• Additional verification evidence when useful
+
+A credential does not automatically determine a student's skill level. Final evaluation of what a credential demonstrates remains with the hiring organization.
+
+### Company verification
+Recruiters use two layers:
+1. Company-domain email verification
+2. Employee ID card or official company letter
+
+Internship posting is unlocked only after the required verification checks pass.
+
+---
+
+## ⚙️ Technology Stack
+
+Frontend:
+• HTML
+• CSS
+• JavaScript
+
+Backend:
+• Node.js
+• Express-style REST API architecture
+
+AI:
+• Gemini 3.7 Flash
+• AIRouter OpenAI-compatible API
+
+Document processing:
+• Python
+• OCR
+• Image/PDF processing
+
+The frontend communicates with the Node.js backend, while AI requests and document-processing operations remain server-side.
+
+---
+
+## 🔄 System Flow
+
+Student / Recruiter
+        ↓
+Iruka SAGE Web Interface
+        ↓
+Node.js Backend
+        ↓
+Matching / Verification / Application Logic
+        ↓
+AIRouter
+        ↓
+Gemini 3.7 Flash
+        ↓
+SAGE Response
+
+---
+
+## 💡 What Makes Iruka SAGE Different?
+
+Most internship platforms focus on finding opportunities.
+
+Iruka SAGE focuses on the complete journey:
+
+Find → Understand → Improve → Prove → Apply
+
+The goal is not just to tell a student which internship they can apply for, but to explain what they should do to become a stronger candidate.
+
+---
+
+## 🔮 Future Scope
+
+• Semantic skill matching using embeddings
+• Larger internship and industry datasets
+• Advanced recruiter analytics
+• More document verification integrations
+• Personalized long-term learning paths
+• Production database and scalable cloud deployment
+• Privacy-preserving analytics and anonymized model improvement
+
+---
+
+## 🏗️ Project Status
+
+Iruka SAGE is currently a working beta/prototype demonstrating the core student, AI, application, recruiter and verification workflows.
+
+Built for Smart India Hackathon.
