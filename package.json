@@ -1,8 +1,12 @@
 {
   "name": "iruka-sage",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "private": true,
-  "description": "Iruka SAGE - counselor-style AI career assistant with context-aware intelligence",
+  "description": "Iruka SAGE - counselor-style AI career assistant",
   "scripts": {"start":"node server.js","dev":"node server.js"},
-  "engines": {"node": ">=18"}
+  "engines": {"node": ">=18"},
+  "dependencies": {
+    "pdf-parse": "1.1.1",
+    "tesseract.js": "6.0.1"
+  }
 }

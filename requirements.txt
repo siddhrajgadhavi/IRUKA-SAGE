@@ -1,7 +1,2 @@
-opencv-python-headless>=4.10.0
-numpy>=1.26.0
-Pillow>=10.0.0
-pytesseract>=0.3.13
-PyMuPDF>=1.24.0
-pypdf>=5.0.0
-torch>=2.5.0
+# Python is not required for certificate verification on Render.
+# Credential privacy screening now uses Node.js PDF extraction + local Tesseract.js OCR.

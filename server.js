@@ -4,6 +4,8 @@ const path = require('path');
 const { URL } = require('url');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
+const pdfParse = require('pdf-parse');
+const { createWorker } = require('tesseract.js');
 
 const PORT = process.env.PORT || 5173;
 const PUBLIC = path.join(__dirname, 'public');
@@ -528,47 +530,62 @@ function extractCertificateFields(text='') {
 }
 
 async function sanitizeCredentialForAI({base64, mime, filename, profileName}) {
-  const tempDir=path.join(__dirname,'.sage-private-tmp');
-  fs.mkdirSync(tempDir,{recursive:true});
-  const ext=mime==='application/pdf'?'.pdf':(mime==='image/png'?'.png':'.jpg');
-  const token=crypto.randomBytes(16).toString('hex');
-  const inputPath=path.join(tempDir,`${token}-input${ext}`);
-  const outputPath=path.join(tempDir,`${token}-sanitized.pdf`);
-  fs.writeFileSync(inputPath,Buffer.from(base64,'base64'));
-  const script=path.join(__dirname,'privacy_sanitizer.py');
-  return await new Promise((resolve,reject)=>{
-    // Windows commonly has an old `python.exe` (e.g. MGLTools/Python 2.7) first on PATH.
-    // Prefer the Python launcher with Python 3 on Windows, while still allowing PYTHON_BIN override.
-    const pythonBin = process.env.PYTHON_BIN || (process.platform === 'win32' ? 'py' : 'python3');
-    const pythonArgs = process.env.PYTHON_BIN
-      ? [script,inputPath,outputPath,profileName||'']
-      : (process.platform === 'win32'
-          ? ['-3',script,inputPath,outputPath,profileName||'']
-          : [script,inputPath,outputPath,profileName||'']);
-    const child=spawn(pythonBin,pythonArgs,{stdio:['ignore','pipe','pipe']});
-    let stdout='',stderr='';
-    child.stdout.on('data',d=>stdout+=d.toString());
-    child.stderr.on('data',d=>stderr+=d.toString());
-    child.on('error',reject);
-    child.on('close',code=>{
-      try{
-        if(code!==0) throw new Error((stderr||stdout||`privacy_sanitizer exited with ${code}`).trim());
-        const meta=JSON.parse(stdout.trim().split(/\r?\n/).pop()||'{}');
-        if(meta.error) throw new Error(meta.error);
-        const sanitized=fs.readFileSync(outputPath);
-        resolve({
-          dataUrl:`data:application/pdf;base64,${sanitized.toString('base64')}`,
-          mime:'application/pdf',
-          meta
-        });
-      }catch(e){ reject(e); }
-      finally{
-        for(const f of [inputPath,outputPath]){try{if(fs.existsSync(f))fs.unlinkSync(f)}catch{}}
-      }
-    });
-  });
-}
+  // Render-safe credential privacy path: no Python/OpenCV/Tesseract executable required.
+  // The original credential is never sent to AIRouter. We extract/OCR text locally,
+  // redact the profile name and obvious personal identifiers, then send text only.
+  const buffer = Buffer.from(base64, 'base64');
+  let ocrText = '';
+  let method = '';
 
+  if (mime === 'application/pdf') {
+    const parsed = await pdfParse(buffer);
+    ocrText = String(parsed.text || '').trim();
+    method = 'node-pdf-text-extraction';
+    if (!ocrText) {
+      throw new Error('This PDF appears to be scanned/image-only. Please upload a text-based PDF or JPG/PNG certificate.');
+    }
+  } else {
+    const worker = await createWorker('eng');
+    try {
+      const result = await worker.recognize(buffer);
+      ocrText = String(result?.data?.text || '').trim();
+      method = 'node-tesseract-local-ocr';
+    } finally {
+      await worker.terminate();
+    }
+    if (!ocrText) throw new Error('Could not read text from the uploaded certificate image.');
+  }
+
+  const before = ocrText;
+  const profile = String(profileName || '').trim();
+  if (profile) {
+    const escaped = profile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    ocrText = ocrText.replace(new RegExp(escaped, 'ig'), '[REDACTED]');
+  }
+  // Redact common personal identifiers before AIRouter receives the text.
+  ocrText = ocrText
+    .replace(/(?:email|e-mail)\s*[:\-]?\s*\S+@\S+/ig, 'Email: [REDACTED]')
+    .replace(/(?:phone|mobile|contact|tel(?:ephone)?)\s*[:\-]?\s*[+\d][\d\s().-]{7,}/ig, 'Phone: [REDACTED]')
+    .replace(/(?:student|application|registration|enrol(?:l)?ment|candidate)\s*(?:id|no|number|#)\s*[:\-]?\s*[A-Z0-9-]{4,}/ig, 'ID: [REDACTED]');
+
+  const normalizedProfile = normalizeIdentityName(profile);
+  const normalizedOriginal = normalizeIdentityName(before);
+  const profileNameMatched = !!normalizedProfile && normalizedOriginal.includes(normalizedProfile);
+
+  return {
+    dataUrl: null,
+    mime: 'text/plain',
+    meta: {
+      ocrText,
+      profileNameMatched,
+      redactions: (before.length - ocrText.length > 0 ? 1 : 0),
+      pages: mime === 'application/pdf' ? 1 : 1,
+      qrDecoded: [],
+      method,
+      privacyMode: 'local-text-only'
+    }
+  };
+}
 async function airouterCredentialReview({ocrText, profileName, filename, claimedSkill, localNameMatch=false, privacyMeta=null}) {
   if(!AIROUTER_API_KEY) return null;
   const schema = {
