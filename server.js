@@ -47,37 +47,6 @@ function certificateNameMatch(documentName='', profileNameParts={}) {
   return firstLast.every(t=>docTokens.has(t)) || (requiredAll.length===3 && requiredAll.every(t=>docTokens.has(t)));
 }
 
-async function verifyGovernmentIdentity({base64,mime,filename}) {
-  const tempDir=path.join(__dirname,'.sage-private-tmp');
-  fs.mkdirSync(tempDir,{recursive:true});
-  const token=crypto.randomBytes(16).toString('hex');
-  const safeExt=mime==='image/png'?'.png':mime==='image/webp'?'.webp':'.jpg';
-  const inputPath=path.join(tempDir,`${token}-government-identity${safeExt}`);
-  fs.writeFileSync(inputPath,Buffer.from(base64,'base64'));
-  const script=path.join(__dirname,'government_identity_verifier.py');
-  const pythonBin=process.env.PYTHON_BIN || (process.platform==='win32'?'py':'python3');
-  const pythonArgs=process.env.PYTHON_BIN ? [script,inputPath,mime,path.join(tempDir,`${token}-identity-result.json`)]
-    : (process.platform==='win32'?['-3',script,inputPath,mime,path.join(tempDir,`${token}-identity-result.json`)]:[script,inputPath,mime,path.join(tempDir,`${token}-identity-result.json`)]);
-  return await new Promise((resolve,reject)=>{
-    const child=spawn(pythonBin,pythonArgs,{stdio:['ignore','pipe','pipe']});
-    let stdout='',stderr='';
-    child.stdout.on('data',d=>stdout+=d.toString());
-    child.stderr.on('data',d=>stderr+=d.toString());
-    child.on('error',reject);
-    child.on('close',code=>{
-      try{
-        const parsed=JSON.parse(stdout.trim().split(/\r?\n/).pop()||'{}');
-        if(code!==0) throw new Error((parsed.error||stderr||`identity verifier exited with ${code}`).trim());
-        if(parsed.ok && parsed.verifiedName){
-          parsed.nameTokens=String(parsed.verifiedName).trim().split(/\s+/).filter(Boolean).slice(0,6);
-        }
-        resolve(parsed);
-      }catch(e){reject(e)}
-      finally{try{if(fs.existsSync(inputPath))fs.unlinkSync(inputPath)}catch{}}
-    });
-  });
-}
-
 const internships = [
   {
     id: 'cyber-01', title: 'Cybersecurity Analyst Intern', organization: 'Nexora Security Labs', location: 'Hybrid', mode: 'Hybrid', duration: '3 months', stipend: '₹12,000/mo',
@@ -808,24 +777,6 @@ ${JSON.stringify(history.slice(-10), null, 2)}
 
       const fallback=sageReply(message,rawProfile,history);
       return json(res,200,{reply:fallback,assistant:'SAGE',mode:'local-fallback',warning:'AI providers unavailable',intent});
-    }
-
-    if (req.method === 'POST' && url.pathname === '/api/verify-government-identity') {
-      const body=await readBody(req);
-      const filename=String(body.filename||'identity-document');
-      const mime=String(body.mime||'').toLowerCase();
-      const base64=String(body.base64||'');
-      if(!base64 || base64.length>7_000_000) return json(res,400,{error:'Identity document is missing or exceeds the 5 MB limit.'});
-      const allowed=['application/pdf','image/png','image/jpeg','image/jpg','image/webp'];
-      if(!allowed.includes(mime)) return json(res,400,{error:'Upload a clear PNG, JPG or WEBP photo of the Aadhaar card.'});
-      try{
-        const result=await verifyGovernmentIdentity({base64,mime,filename});
-        if(!result.ok) return json(res,400,{error:result.error||'Could not verify the government identity document.',result,privacySafe:true});
-        return json(res,200,{ok:true,result,privacySafe:true});
-      }catch(e){
-        console.error('Government identity verification failed:',e.stack||e.message);
-        return json(res,500,{error:'Government identity verification failed. The document stayed local to the server.',detail:String(e.message||e),privacySafe:true});
-      }
     }
 
     if (req.method === 'POST' && url.pathname === '/api/verify-certificate') {
