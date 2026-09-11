@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b63f6" />
+  <title>Iruka Sage</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="login-brand"><div class="brand-mark">IS</div><div><strong>Iruka Sage</strong><span>AI internship ecosystem</span></div></div>
+      <div class="login-kicker">WELCOME TO IRUKA SAGE</div>
+      <h1>How are you using SAGE?</h1>
+      <p class="login-subtitle">Choose your account type to enter the right portal.</p>
+      <div class="role-grid" id="roleGrid">
+        <button class="role-card selected" data-role="student" type="button"><span class="role-icon">🎓</span><span><b>Student</b><small>Find internships, build skills and prepare for interviews.</small></span><span class="role-check">✓</span></button>
+        <button class="role-card" data-role="company" type="button"><span class="role-icon">🏢</span><span><b>Hiring Company</b><small>Post internships and discover students for your roles.</small></span><span class="role-check">✓</span></button>
+      </div>
+      <form id="loginForm" class="login-form">
+        <label>EMAIL ADDRESS</label>
+        <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" required />
+        <button class="primary login-submit" type="submit">Continue with email <span>→</span></button>
+      </form>
+      <p class="login-note">Step 1 of account setup · Email verification will be added next.</p>
+    </div>
+  </div>
+
+  <div class="app-shell" id="appShell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark">IS</div><div><strong>Iruka Sage</strong><span>AI career companion</span></div></div>
+      <nav id="nav">
+        <button class="nav-item active" data-view="dashboard"><span>⌂</span>Dashboard</button>
+        <button class="nav-item" data-view="internships"><span>◎</span>Internships</button>
+        <button class="nav-item" data-view="profile"><span>◌</span>Profile</button>
+        <button class="nav-item" data-view="skills"><span>◇</span>Skills</button>
+        <button class="nav-item" data-view="applications"><span>▣</span>Applications</button>
+        <button class="nav-item sage-nav" data-view="sage"><span>✦</span>SAGE</button>
+      </nav>
+      <div class="sidebar-card">
+        <span class="eyebrow">SAGE STATUS</span>
+        <strong><i class="status-dot"></i> Local AI online</strong>
+        <small>No API key required</small>
+      </div>
+      <div class="sidebar-foot">Iruka Sage v2.0<br><span>SAGE enhanced build</span></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" id="menuBtn">☰</button>
+        <div>
+          <p class="eyebrow" id="pageEyebrow">OVERVIEW</p>
+          <h1 id="pageTitle">Dashboard</h1>
+        </div>
+        <div class="top-actions">
+          <button class="ghost" id="quickProfile">Edit profile</button>
+          <div class="account-menu"><button class="avatar" id="avatar">U</button><button class="logout-btn" id="logoutBtn" type="button">Log out</button></div>
+        </div>
+      </header>
+      <section id="view"></section>
+    </main>
+  </div>
+
+  <button class="sage-fab" id="sageFab"><span>✦</span><div><b>Ask SAGE</b><small>AI career assistant</small></div></button>
+  <div class="chat-panel" id="chatPanel" aria-hidden="true">
+    <div class="chat-head">
+      <div class="sage-orb">✦</div>
+      <div><b>SAGE</b><small>Chill. Practical. Profile-aware.</small></div>
+      <button id="closeChat">×</button>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-suggestions" id="chatSuggestions"></div>
+    <form class="chat-input" id="chatForm">
+      <input id="chatInput" placeholder="Ask about skills, matches, CV, projects…" autocomplete="off" />
+      <button type="submit">➜</button>
+    </form>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

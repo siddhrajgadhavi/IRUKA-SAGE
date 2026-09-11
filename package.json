@@ -1,0 +1,8 @@
+{
+  "name": "iruka-sage",
+  "version": "3.5.0",
+  "private": true,
+  "description": "Iruka SAGE - counselor-style AI career assistant with context-aware intelligence",
+  "scripts": {"start":"node server.js","dev":"node server.js"},
+  "engines": {"node": ">=18"}
+}

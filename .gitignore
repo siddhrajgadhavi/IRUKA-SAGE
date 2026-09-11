@@ -1,0 +1,23 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Local runtime / logs
+*.log
+logs/
+
+# Python cache
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
