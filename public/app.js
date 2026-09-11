@@ -3,7 +3,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 
 // Fresh-install reset: this packaged build intentionally starts like a first login.
 // It clears only this SAGE app's local browser state once; after that, new profile data persists normally.
-const FRESH_INSTALL_KEY = 'irukaSageFreshInstall_20260911_MANUAL_NAME';
+const FRESH_INSTALL_KEY = 'irukaSageFreshInstall_20260911_GITHUB_CLEAN';
 try {
   if (localStorage.getItem(FRESH_INSTALL_KEY) !== '1') {
     localStorage.clear();
@@ -263,7 +263,7 @@ function certificateNameParts(){
   return {first, middle, last};
 }
 
-function profileCompletion(){let n=0,total=5;if(profile.name)n++;if(profile.education)n++;if(verifiedProfileSkills().length)n++;if(profile.interests.length)n++;if(profile.projects.length)n++;return Math.round(n/total*100)}
+function profileCompletion(){let n=0,total=6;if(profile.name)n++;if(profile.education)n++;if(verifiedProfileSkills().length)n++;if(profile.interests.length)n++;if(profile.projects.length)n++;if(identityIsVerified())n++;return Math.round(n/total*100)}
 function applied(id){return applications.some(a=>a.id===id)}
 
 async function api(path, options={}){
@@ -355,35 +355,108 @@ function renderInternships(){
     <div class="grid grid-3">${internships.map(internshipCard).join('')}</div></div>`; bindCommon();
 }
 
-function identityIsVerified(){return false;}
+function identityIsVerified(){const st=String(profile.identityVerification?.status||'').toLowerCase();return !!profile.identityVerification && ['name-imported','verified'].includes(st);}
+function identityDisplay(){
+  const v=profile.identityVerification;
+  if(identityIsVerified()) return `<div class="notice"><b>✓ Government identity document verified</b><br>Government name: ${esc(v.verifiedName)}<br><span class="tiny muted">Imported from the uploaded Aadhaar card photo using local image processing and OCR. The identity image stays local to SAGE.</span></div>`;
+  if(v?.status==='needs-review') return `<div class="notice warn"><b>⚠ Identity document needs review</b><br>${esc(v.message||v.error||'The document could be read, but SAGE could not establish enough evidence for automatic verification.')}<br><span class="tiny muted">Upload a clear Aadhaar card photo with the full card visible.</span></div>`;
+  if(v?.status==='name-mismatch') return `<div class="notice warn"><b>⚠ Government name does not match</b><br>Document name: ${esc(v.verifiedName||'Not detected')}<br><span class="tiny muted">Your profile name must be selected from the government document name.</span></div>`;
+  return `<div class="notice warn"><b>No government identity document verified.</b><br>Upload a clear photo of the Aadhaar card. SAGE rectifies the image locally and reads the printed government name with OCR.</div>`;
+}
 
 function renderProfile(){
+  const identity=profile.identityVerification;
+  const nameStructure=identityIsVerified()?`<div class="card" style="padding:16px;margin-bottom:20px">
+      <div class="section-head" style="margin-top:0"><div><h3>Choose your name structure</h3><p>All choices come only from the verified government document name. Certificates can match your first + last name or all three selected components.</p></div></div>
+      <div class="form-grid">
+        <div class="field"><label>FIRST NAME</label><select id="nameFirst"></select></div>
+        <div class="field"><label>MIDDLE NAME</label><select id="nameMiddle"></select></div>
+        <div class="field"><label>LAST NAME</label><select id="nameLast"></select></div>
+      </div>
+      <div id="profileNamePreview" class="notice" style="margin-top:12px"><b>Profile name:</b> ${esc(profile.name||'Select your name components')}</div>
+    </div>`:'';
   $('#view').innerHTML=`<div class="view-wrap"><div class="card form-card">
     <div class="section-head" style="margin-top:0"><div><h3>Your profile</h3><p>This is the source of truth for matching and SAGE personalization.</p></div><span class="status">${profileCompletion()}% complete</span></div>
-    <div class="card" style="padding:16px;margin:14px 0 20px">
-      <div class="section-head" style="margin-top:0"><div><h3>Enter your name</h3><p>Use the name you want SAGE to display on your profile, applications and CV. You can edit it anytime.</p></div><span class="status">Required</span></div>
-      <div class="field"><label>FULL NAME</label><input id="profileNameInput" name="profileName" value="${esc(profile.name)}" placeholder="e.g. Siddhraj Gadhavi" autocomplete="name"></div>
-      <div class="tiny muted" style="margin-top:8px">For the SIH beta, identity is self-declared. Certificate screening separately checks whether the certificate name is consistent with the profile name.</div>
+    <div class="section-head" style="margin-top:18px"><div><h3>Government identity</h3><p>Upload a clear photo of your Aadhaar card. SAGE rectifies the photo locally and reads the printed government name with OCR.</p></div><span class="status">${identityIsVerified()?'✓ Verified':'Not verified'}</span></div>
+    ${identityDisplay()}
+    <div class="card upload-card" style="margin:12px 0 20px">
+      <div class="upload-box"><strong>Verify Aadhaar card</strong><small>Clear photo of the Aadhaar card · full card visible · maximum 5 MB</small><input id="aadhaarDocumentFile" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"></div>
+      <div id="identityProgress" class="verify-progress" hidden><div class="progress"><i id="identityBar" style="width:20%"></i></div><p id="identityText" class="tiny muted">Reading the document locally…</p></div>
+      <div class="tiny muted" style="margin-top:10px">SAGE keeps the Aadhaar image local. A small DL model proposes the card corners, OpenCV provides a fallback, and local OCR extracts the printed name. This is a document/name consistency screen, not UIDAI cryptographic authentication.</div>
     </div>
+    ${nameStructure}
     <form id="profileForm" class="form-grid">
-      <div class="field full"><label>EMAIL</label><input name="email" type="email" value="${esc(profile.email)}" placeholder="you@example.com"></div>
+      <div class="field"><label>NAME</label><input name="name" value="${esc(profile.name)}" readonly placeholder="Select your name components"></div>
+      <div class="field"><label>EMAIL</label><input name="email" type="email" value="${esc(profile.email)}" placeholder="you@example.com"></div>
       <div class="field full"><label>EDUCATION</label><input name="education" value="${esc(profile.education)}" placeholder="e.g. B.Tech CSE — Cybersecurity"></div>
       <div class="field full"><label>TARGET ROLE</label><input name="goal" value="${esc(profile.goal)}" placeholder="e.g. Cybersecurity Analyst, AI/ML Engineer, Backend Developer"></div>
       <div class="field full"><label>INTERESTS <span class="muted">(comma separated)</span></label><input name="interests" value="${esc(profile.interests.join(', '))}" placeholder="Cybersecurity, Artificial Intelligence, Web Development"></div>
-      <div class="field full"><label>PROJECTS <span class="muted">(one per line)</span></label><textarea name="projects" placeholder="Phishing URL detector using Python\nInternship matching platform">${esc(profile.projects.join('\\n'))}</textarea></div>
-      <div class="field full"><div class="notice"><b>Profile identity:</b> Your name is entered manually for this SIH beta. No Aadhaar, DigiLocker, QR or government-ID upload is required.</div></div>
+      <div class="field full"><label>PROJECTS <span class="muted">(one per line)</span></label><textarea name="projects" placeholder="Phishing URL detector using Python\nInternship matching platform">${esc(profile.projects.join('\n'))}</textarea></div>
+      <div class="field full"><div class="notice">${identityIsVerified()?'Changing the verified identity name triggers identity re-verification and locks existing credential-backed certificates until they are revalidated.':'Verify your government identity document above to bind the profile name to the imported government record.'}</div></div>
       <div class="field full"><button class="primary" type="submit">Save profile</button></div>
     </form>
   </div></div>`;
   const offerWrap=document.createElement('div'); offerWrap.innerHTML=renderStudentOfferSection(); $('#view').appendChild(offerWrap.firstElementChild);
 
+  const identityInput=$('#aadhaarDocumentFile');
+  if(identityIsVerified()){
+    const names=Array.isArray(identity.nameTokens)?identity.nameTokens:[];
+    const fill=(id,selected,placeholder)=>{
+      const el=$(id); if(!el)return;
+      el.innerHTML=`<option value="">${placeholder}</option>`+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+      if(selected)el.value=selected;
+    };
+    fill('#nameFirst',profile.nameParts.first,'Choose first name');
+    fill('#nameMiddle',profile.nameParts.middle,'No middle name');
+    fill('#nameLast',profile.nameParts.last,'Choose last name');
+    ['#nameFirst','#nameMiddle','#nameLast'].forEach(sel=>$(sel)?.addEventListener('change',()=>{
+      profile.nameParts={first:$('#nameFirst')?.value||'',middle:$('#nameMiddle')?.value||'',last:$('#nameLast')?.value||''};
+      profile.name=[profile.nameParts.first,profile.nameParts.middle,profile.nameParts.last].filter(Boolean).join(' ');
+      const input=document.querySelector('#profileForm [name="name"]');if(input)input.value=profile.name;
+      const preview=$('#profileNamePreview');if(preview)preview.innerHTML=`<b>Profile name:</b> ${esc(profile.name||'Select your name components')}`;
+      save();
+    }));
+  }
+  identityInput?.addEventListener('change',async e=>{
+    const file=e.target.files[0]; if(!file)return;
+    if(file.size>5*1024*1024){toast('The identity document is over the 5 MB limit');identityInput.value='';return;}
+    const allowed=['image/png','image/jpeg','image/jpg','image/webp'];
+    const ext=(file.name.split('.').pop()||'').toLowerCase();
+    if(!allowed.includes(file.type.toLowerCase()) && !['png','jpg','jpeg','webp'].includes(ext)){toast('Upload a PNG, JPG or WEBP photo of the Aadhaar card');identityInput.value='';return;}
+    const progress=$('#identityProgress'),bar=$('#identityBar'),txt=$('#identityText'); progress.hidden=false;bar.style.width='25%';txt.textContent='Reading the Aadhaar card locally…';
+    try{
+      const dataUrl=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});
+      bar.style.width='65%';txt.textContent='Rectifying the card photo and reading the printed name locally…';
+      const base64=dataUrl.split(',')[1];
+      const d=await api('/api/verify-government-identity',{method:'POST',body:JSON.stringify({filename:file.name,mime:file.type||'application/octet-stream',base64})});
+      bar.style.width='100%';
+      if(!d.ok){progress.hidden=true;profile.identityVerification={...d.result,status:d.result?.status||'needs-review',error:d.error||d.result?.error};save();render();toast(d.error||'Identity document could not be verified');return;}
+      profile.identityVerification={...d.result,verifiedAt:new Date().toISOString()};
+      if(['verified','name-imported'].includes(String(d.result.status||'').toLowerCase())){
+        profile.identityVerification.status='name-imported';
+        profile.nameParts={first:'',middle:'',last:''}; profile.name='';
+        save(); render(); toast('Aadhaar identity verified ✓ Choose the name structure');
+      }else{
+        save(); render(); toast(d.result.message||'Identity document needs review');
+      }
+    }catch(err){progress.hidden=true;toast(err.message||'Could not verify the identity document');}
+  });
+
   $('#profileForm').addEventListener('submit',async e=>{
     e.preventDefault();
-    const fd=new FormData(e.currentTarget);
-    const nextName=String($('#profileNameInput')?.value||'').trim();
-    if(!nextName){toast('Please enter your full name');$('#profileNameInput')?.focus();return;}
-    profile={...profile,name:nextName,email:String(fd.get('email')||'').trim(),education:String(fd.get('education')||'').trim(),goal:String(fd.get('goal')||'').trim(),interests:String(fd.get('interests')||'').split(',').map(x=>x.trim()).filter(Boolean),projects:String(fd.get('projects')||'').split('\\n').map(x=>x.trim()).filter(Boolean),identityVerification:null,nameParts:{first:'',middle:'',last:''}};
-    save();await refreshMatches();render();toast('Profile saved — matches updated');
+    const fd=new FormData(e.currentTarget); const nextName=fd.get('name').trim();
+    const previousVerifiedName=profile.identityVerification?.verifiedName||'';
+    const hasImportedIdentity=identityIsVerified() && !!previousVerifiedName;
+    const nameChanged=hasImportedIdentity && !!nextName && normalizeLocalName(nextName)!==normalizeLocalName(previousVerifiedName);
+    profile={...profile,name:nextName,email:fd.get('email').trim(),education:fd.get('education').trim(),goal:fd.get('goal').trim(),interests:fd.get('interests').split(',').map(x=>x.trim()).filter(Boolean),projects:fd.get('projects').split('\n').map(x=>x.trim()).filter(Boolean)};
+    if(nameChanged){
+      profile.identityVerification={status:'reverification-required',previousVerifiedName,reason:'Verified identity name changed'};
+      profile.certificates=(Array.isArray(profile.certificates)?profile.certificates:[]).map(c=>({...c,credentialBacked:false,status:'needs-review',reverificationRequired:true,verificationNote:'Identity name changed. Re-verify government identity and revalidate this credential before treating it as credential-backed.'}));
+      certificates=profile.certificates;
+      profile.verifiedSkills=[]; profile.skills=[];
+      toast('Name changed — identity and certificates require re-verification');
+    }
+    save();await refreshMatches();render(); if(!nameChanged) toast('Profile saved — matches updated');
   });
 }
 function normalizeLocalName(value=''){return String(value).toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
